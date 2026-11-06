@@ -1,0 +1,28 @@
+{
+  "name": "PocketJava Preview",
+  "version": "0.1.0",
+  "status": "experimental-subset",
+  "target": "Nokia 225 / MTK6260",
+  "screen": [
+    240,
+    320
+  ],
+  "required_ram_kib": 1024,
+  "build_command": "python tools/build.py vxp",
+  "test_command": "python tests/test_runtime.py",
+  "artifact": "build/PocketJava.vxp",
+  "hardware_verified": false,
+  "full_cldc_midp": false,
+  "signed_artifact": "build/PocketJava-signed.vxp",
+  "sign_command": "python tools/sign_vxp.py",
+  "aoe_gameplay_verified": false,
+  "scanner": {
+    "scope": "removable and system drive; recursive",
+    "max_files": 64,
+    "max_depth": 6,
+    "queue_directories": 96,
+    "entries_per_tick": 16,
+    "unicode_bmp": true
+  },
+  "package_command": "python tools/package.py"
+}
