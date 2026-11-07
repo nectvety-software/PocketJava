@@ -1,7 +1,7 @@
 # PocketJava — JAR/JAD trên MRE VXP
 
 Đã có lõi Java viết bằng C và `build/PocketJava.vxp`, cấu hình Nokia 225 /
-MTK6260 / 240×320 / yêu cầu RAM 1024 KiB.
+MTK6260 / 240×320 / yêu cầu RAM 2048 KiB (heap theo dõi 1536 KiB trên MRE).
 
 **Bản preview, chưa phải giả lập CLDC/MIDP đầy đủ.** JAR được đọc thật, class được
 thực thi thật. Demo đã chạy trên desktop và binary ARM với API MRE mô phỏng.
@@ -93,7 +93,15 @@ Sau khi mở được JAR, VXPEmu dừng ở `Unsupported API` của `java/io/Da
 `readUTF(DataInput)`, cho `readFully` đọc lặp theo khối và thêm opcode
 `dcmpl`/`dcmpg` (151/152). Thanh trạng thái launcher xuống tối đa 3 dòng nên tên API
 thiếu hiện đủ thay vì bị cắt ở 31 ký tự. Host test, mock ARM và bản ký pass;
-heap sau quit = 0. Chưa chạy lại ARENA.jar trên VXPEmu.
+heap sau quit = 0.
+
+ARENA.jar nay chạy được qua màn hình `LỜI NÓI ĐẦU` và splash `LIÊN QUÂN MOBILE`
+trên VXPEmu, tới menu đăng nhập khi chạy host. Ba lỗi lõi đã sửa: hằng
+`static final String` qua `ConstantValue` (tag 8) bị từ chối, thiếu
+`Display.flashBacklight`/`vibrate`, `Canvas.getKeyName` và lớp
+`com/nokia/mid/ui/DeviceControl`; cấp phát object được thử lại sau GC. Game cần
+khoảng 1,18 MiB heap đỉnh nên VXP nay yêu cầu 2048 KiB RAM. Xem
+[bản sửa ARENA](docs/ARENA-JAR-FIX.md). Chưa xác nhận gameplay đầy đủ trên máy thật.
 
 JAR/class được đọc và thực thi thật. Runtime chưa đạt CLDC/MIDP đầy đủ;
 xem [ma trận coverage](docs/CLDC-MIDP-COVERAGE.md) để phân biệt phần đã kiểm tra,
@@ -143,8 +151,8 @@ Unicode ngoài BMP, Sprite/TileLayer, mạng, Form/List/Command và
 API hãng/JSR bổ sung. Graphics vẫn chia sẻ trạng thái; text offscreen chưa hỗ trợ.
 Native inflate/PNG/GC chưa chia lát thời gian. Không cam kết chạy mọi JAR.
 
-Giới hạn: JAR 8 MiB, member 320 KiB, tracked VM heap 816 KiB trên MRE và 896 KiB
-trên host 64-bit (bù kích thước pointer/metadata lớn hơn host), 95 classes. Constant pool
+Giới hạn: JAR 8 MiB, member 320 KiB, tracked VM heap 1536 KiB trên MRE và 896 KiB
+trên host 64-bit (host giữ mức thấp để test tiết kiệm RAM), 95 classes. Constant pool
 dùng đầy đủ `u2 constant_pool_count`; CP lưu offset 32-bit. Field/method dùng đầy đủ
 `u2 fields_count/methods_count`; metadata method lưu code offset 32-bit và suy ra
 exception-table. Object table được cấp phát lười theo page 128 slot, tối đa 8191 object,
@@ -157,7 +165,7 @@ Heap không gồm framebuffer RGB565 150 KiB, code, native stack hay overhead fi
 smoke-test Cops.L.A hiện đạt peak 994168 byte gồm framebuffer nhưng chạy đủ 1200 callbacks,
 heap sau quit = 0. Full 29-game report gần nhất trước tối ưu này có avt3D peak 966568 byte
 (tracked heap khoảng 812968 byte) và aoe-3 934568 byte.
-Yêu cầu RAM 1 MiB vẫn cần xác nhận trên máy thật.
+Yêu cầu RAM 2 MiB (VXP) vẫn cần xác nhận trên máy thật.
 
 ## Ký và phân phối
 

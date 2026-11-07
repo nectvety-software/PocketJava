@@ -16,7 +16,7 @@
 #define STATIC 8
 #define B_RUNTIME 40
 #define B_LONG 39
-enum {B_OBJECT=1,B_MIDLET,B_DISPLAYABLE,B_CANVAS,B_GAMECANVAS,B_GRAPHICS,B_DISPLAY,B_STRING,B_MATH,B_SYSTEM,B_RANDOM,B_FONT,B_THREAD,B_RUNNABLE,B_CLASS,B_EXCEPTION,B_STRINGBUFFER,B_INTEGER,B_SHORT,B_VECTOR,B_ENUM,B_HASHTABLE,B_INPUT,B_OUTPUT,B_BYTEINPUT,B_BYTEOUTPUT,B_DATAINPUT,B_DATAOUTPUT,B_IMAGE,B_COMMANDLISTENER,B_RECORDSTORE,B_MANAGER,B_PLAYER,B_CONTROL,B_VOLUME,B_PRINTSTREAM,B_DIRECTUTILS,B_DIRECTGRAPHICS};
+enum {B_OBJECT=1,B_MIDLET,B_DISPLAYABLE,B_CANVAS,B_GAMECANVAS,B_GRAPHICS,B_DISPLAY,B_STRING,B_MATH,B_SYSTEM,B_RANDOM,B_FONT,B_THREAD,B_RUNNABLE,B_CLASS,B_EXCEPTION,B_STRINGBUFFER,B_INTEGER,B_SHORT,B_VECTOR,B_ENUM,B_HASHTABLE,B_INPUT,B_OUTPUT,B_BYTEINPUT,B_BYTEOUTPUT,B_DATAINPUT,B_DATAOUTPUT,B_IMAGE,B_COMMANDLISTENER,B_RECORDSTORE,B_MANAGER,B_PLAYER,B_CONTROL,B_VOLUME,B_PRINTSTREAM,B_DIRECTUTILS,B_DIRECTGRAPHICS,B_DEVICECONTROL};
 typedef struct {uint32_t text_tag,payload;} CP;
 #define CP_TAG(p) ((unsigned)((p)->text_tag>>28))
 #define CP_TEXT(p) ((p)->text_tag&0x0fffffffu)
@@ -28,7 +28,7 @@ typedef struct {uint32_t text_tag,payload;} CP;
 #define CP_B(p) ((uint16_t)((p)->payload>>16))
 #define CP_SET_A(p,x) ((p)->payload=((p)->payload&0xffff0000u)|((uint16_t)(x)))
 #define CP_SET_B(p,x) ((p)->payload=((p)->payload&0x0000ffffu)|((uint32_t)(uint16_t)(x)<<16))
-typedef struct {uint16_t name,desc,flags,offset,wide;int32_t value,high;} Field;
+typedef struct {uint16_t name,desc,flags,offset,wide,constant;int32_t value,high;} Field;
 typedef struct {uint32_t code,len;uint16_t name,desc,flags,locals,stack,nh;} Method;
 typedef struct {char *name;int parent,builtin,state,instance_fields,loading;unsigned char *bytes;CP *cp;Field *fields;Method *methods;uint16_t nc,nf,nm;} Class;
 typedef struct {uint16_t cls;uint8_t kind,mark;uint32_t len;int32_t *data;void *native;} Object;
@@ -80,8 +80,8 @@ static void gc(PJ*v);
 static int builtin_name(const char*s){
     if(!strcmp(s,"java/lang/Long"))return B_LONG;
     if(!strcmp(s,"java/lang/Runtime"))return B_RUNTIME;
-    static const char *names[]={"","java/lang/Object","javax/microedition/midlet/MIDlet","javax/microedition/lcdui/Displayable","javax/microedition/lcdui/Canvas","javax/microedition/lcdui/game/GameCanvas","javax/microedition/lcdui/Graphics","javax/microedition/lcdui/Display","java/lang/String","java/lang/Math","java/lang/System","java/util/Random","javax/microedition/lcdui/Font","java/lang/Thread","java/lang/Runnable","java/lang/Class","java/lang/Exception","java/lang/StringBuffer","java/lang/Integer","java/lang/Short","java/util/Vector","java/util/Enumeration","java/util/Hashtable","java/io/InputStream","java/io/OutputStream","java/io/ByteArrayInputStream","java/io/ByteArrayOutputStream","java/io/DataInputStream","java/io/DataOutputStream","javax/microedition/lcdui/Image","javax/microedition/lcdui/CommandListener","javax/microedition/rms/RecordStore","javax/microedition/media/Manager","javax/microedition/media/Player","javax/microedition/media/Control","javax/microedition/media/control/VolumeControl","java/io/PrintStream","com/nokia/mid/ui/DirectUtils","com/nokia/mid/ui/DirectGraphics"};
-    size_t n=strlen(s);int i;for(i=1;i<=B_DIRECTGRAPHICS;i++)if(!strcmp(s,names[i]))return i;
+    static const char *names[]={"","java/lang/Object","javax/microedition/midlet/MIDlet","javax/microedition/lcdui/Displayable","javax/microedition/lcdui/Canvas","javax/microedition/lcdui/game/GameCanvas","javax/microedition/lcdui/Graphics","javax/microedition/lcdui/Display","java/lang/String","java/lang/Math","java/lang/System","java/util/Random","javax/microedition/lcdui/Font","java/lang/Thread","java/lang/Runnable","java/lang/Class","java/lang/Exception","java/lang/StringBuffer","java/lang/Integer","java/lang/Short","java/util/Vector","java/util/Enumeration","java/util/Hashtable","java/io/InputStream","java/io/OutputStream","java/io/ByteArrayInputStream","java/io/ByteArrayOutputStream","java/io/DataInputStream","java/io/DataOutputStream","javax/microedition/lcdui/Image","javax/microedition/lcdui/CommandListener","javax/microedition/rms/RecordStore","javax/microedition/media/Manager","javax/microedition/media/Player","javax/microedition/media/Control","javax/microedition/media/control/VolumeControl","java/io/PrintStream","com/nokia/mid/ui/DirectUtils","com/nokia/mid/ui/DirectGraphics","com/nokia/mid/ui/DeviceControl"};
+    size_t n=strlen(s);int i;for(i=1;i<=B_DEVICECONTROL;i++)if(!strcmp(s,names[i]))return i;
     if((n>=9&&!strcmp(s+n-9,"Exception"))||!strcmp(s,"java/lang/Throwable")||(n>=5&&!strcmp(s+n-5,"Error")))return B_EXCEPTION;
     if(!strcmp(s,"java/lang/StringBuilder"))return B_STRINGBUFFER;
     if(!strcmp(s,"javax/microedition/media/Controllable"))return B_CONTROL;
@@ -102,7 +102,13 @@ static int attrs(Reader*r,Class*c,Method*m,Field*f){
             m->nh=u2(r);if(!skip(r,(size_t)m->nh*8))return 0;
             if(!attrs(r,c,NULL,NULL))return 0;
         }else if(f&&eq(r->v,c,name,"ConstantValue")){
-            CP*p=cp(r->v,c,u2(r),3);if(p)f->value=(int32_t)CP_VALUE(p);
+            unsigned ci=u2(r);CP*p=cp(r->v,c,ci,0);unsigned t;
+            if(!p)return 0;
+            t=CP_TAG(p);
+            if(t==3||t==4)f->value=(int32_t)CP_VALUE(p);
+            else if(t==5||t==6){if(ci+1>=c->nc)return err(r->v,"Invalid wide ConstantValue");f->value=(int32_t)CP_VALUE(p);f->high=(int32_t)CP_VALUE(c->cp+ci+1);}
+            else if(t==8)f->constant=(uint16_t)ci; /* String literal: materialize during initialize(). */
+            else return err(r->v,"Unsupported ConstantValue type");
         }
         if(r->pos>end)return err(r->v,"Invalid attribute length");r->pos=end;
     }
@@ -192,8 +198,8 @@ static void array_put(Object*o,uint32_t i,int32_t x){if(o->kind==1)((uint16_t*)o
 static int32_t allocobj(PJ*v,int cls,int kind,uint32_t n){
     unsigned i;int pass;int32_t *data=NULL;Object*slot=NULL;
     size_t size=(n?n:1)*element_size(kind);if(size>PJ_ENTRY_LIMIT){err(v,"Object/array size limit");return 0;}
-    for(pass=0;pass<2;pass++){
-        i=object_free_slot(v,pass==1);
+    for(pass=0;pass<3;pass++){
+        i=object_free_slot(v,pass>0);
         if(i){slot=object_slot(v,i,0);if(slot)data=pj_alloc(size);}
         if(data){memset(data,0,size);*slot=(Object){(uint16_t)cls,(uint8_t)kind,0,n,data,NULL};return (int32_t)(REF+i);}
         gc(v);
@@ -222,6 +228,7 @@ static int pushframe(PJ*v,int cls,int mi,const int32_t*args,int argc,int init){
     memset(v->slots+base,0,(m->locals+m->stack)*sizeof(int32_t));for(i=0;i<argc;i++)v->slots[base+i]=args[i];return 1;
 }
 static int initialize(PJ*v,int cls){int mi,target=cls;Class*c=v->classes[cls];if(c->state)return 1;if(c->parent&&!initialize(v,c->parent))return 0;
+    for(unsigned n=0;n<c->nf;n++){Field*f=c->fields+n;CP*p,*t;int32_t ref;if(!(f->flags&STATIC)||!f->constant)continue;p=cp(v,c,f->constant,8);if(!p)return 0;t=cp(v,c,CP_A(p),1);if(!t)return 0;ref=string(v,c->bytes+CP_TEXT(t),CP_A(t));if(!ref)return 0;f->value=ref;f->constant=0;}
     c->state=1;mi=method(v,&target,"<clinit>","()V");if(mi<0){c->state=2;return 1;}if(!pushframe(v,target,mi,NULL,0,cls))return 0;return 0;}
 static int signature(PJ*v,const char*s,int*argc,int*ret){int n=0;const char*p=s;if(*p++!='(')return err(v,"Invalid method descriptor");while(*p&&*p!=')'){int array=0;while(*p=='['){array=1;p++;}if(!*p)return err(v,"Invalid array descriptor");if(*p=='L'){p++;while(*p&&*p!=';')p++;if(*p!=';')return err(v,"Invalid reference descriptor");p++;}else if(strchr("BCISZJDF",*p)){if(!array&&(*p=='J'||*p=='D'))n++;p++;}else return err(v,"Invalid argument descriptor");if(++n>32)return err(v,"Too many method arguments");}if(*p!=')')return err(v,"Invalid method descriptor");p++;if(!*p)return err(v,"Missing return descriptor");*ret=*p=='V'?0:(*p=='J'||*p=='D'?2:1);*argc=n;return 1;}
 static int push(PJ*v,Frame*f,int32_t x){if(f->sp>=f->end)return err(v,"Operand stack overflow");v->slots[f->sp++]=x;return 1;}
@@ -273,6 +280,10 @@ static int native(PJ*v,int b,const char*name,const char*desc,int32_t*a,int32_t*o
     if(b==B_DISPLAY&&IS("getDisplay","(Ljavax/microedition/midlet/MIDlet;)Ljavax/microedition/lcdui/Display;")){*out=v->display;return 1;}
     if(b==B_DISPLAY&&IS("getCurrent","()Ljavax/microedition/lcdui/Displayable;")){*out=v->canvas;return 1;}
     if(b==B_DISPLAY&&IS("setCurrent","(Ljavax/microedition/lcdui/Displayable;)V")){if(!obj(v,a[1]))return -1;v->canvas=a[1];v->dirty=1;return 1;}
+    if(b==B_DISPLAY&&IS("flashBacklight","(I)V"))return 1;
+    if(b==B_DISPLAY&&IS("vibrate","(I)Z")){*out=1;return 1;}
+    if(b==B_DEVICECONTROL&&(IS("setLights","(II)V")||IS("flashLights","(II)V")||IS("vibrate","(I)V")||IS("startVibra","(I)V")||IS("stopVibra","()V")))return 1;
+    if(b==B_DEVICECONTROL&&IS("getLights","()I")){*out=1;return 1;}
     if((b==B_CANVAS||b==B_GAMECANVAS||b==B_DISPLAYABLE)&&IS("getWidth","()I")){*out=240;return 1;}
     if((b==B_CANVAS||b==B_GAMECANVAS||b==B_DISPLAYABLE)&&IS("getHeight","()I")){*out=320;return 1;}
     if((b==B_CANVAS||b==B_GAMECANVAS||b==B_DISPLAYABLE)&&IS("isShown","()Z")){*out=a[0]&&a[0]==v->canvas;return 1;}
@@ -280,6 +291,11 @@ static int native(PJ*v,int b,const char*name,const char*desc,int32_t*a,int32_t*o
     if((b==B_CANVAS||b==B_GAMECANVAS)&&IS("setFullScreenMode","(Z)V"))return 1;
     if((b==B_CANVAS||b==B_GAMECANVAS)&&IS("isDoubleBuffered","()Z")){*out=0;return 1;}
     if((b==B_CANVAS||b==B_GAMECANVAS)&&IS("getGameAction","(I)I")){switch(a[1]){case -1:case 50:*out=1;break;case -2:case 56:*out=6;break;case -3:case 52:*out=2;break;case -4:case 54:*out=5;break;case -5:case 53:*out=8;break;}return 1;}
+    if((b==B_CANVAS||b==B_GAMECANVAS||b==B_DISPLAYABLE)&&IS("getKeyName","(I)Ljava/lang/String;")){
+        char buf[16];const char*s=buf;
+        switch(a[1]){case -1:case 50:s="UP";break;case -2:case 56:s="DOWN";break;case -3:case 52:s="LEFT";break;case -4:case 54:s="RIGHT";break;case -5:case 53:s="SELECT";break;case -6:case 49:s="SOFT1";break;case -7:case 55:s="SOFT2";break;case -8:case 42:s="STAR";break;case -9:case 51:s="BACK";break;case 35:s="POUND";break;default:snprintf(buf,sizeof(buf),"%d",(int)a[1]);s=buf;break;}
+        int32_t ref=string(v,(const unsigned char*)s,strlen(s));if(!ref)return -1;*out=ref;return 1;
+    }
     if(b==B_GRAPHICS){
         if(IS("setColor","(I)V")){v->color=(uint32_t)a[1]&0xffffffu;return 1;}
         if(IS("setColor","(III)V")){v->color=((uint32_t)a[1]&255)<<16|((uint32_t)a[2]&255)<<8|((uint32_t)a[3]&255);return 1;}

@@ -2,7 +2,7 @@
   "name": "j2me",
   "vendor": "LuaS30",
   "appid": 1093260168,
-  "ram_kb": 1024,
+  "ram_kb": 2048,
   "screen_width": 240,
   "screen_height": 320,
   "fps": 15,

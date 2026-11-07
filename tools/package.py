@@ -29,6 +29,7 @@ def main():
         'CORE-UPGRADE-2.md': 'docs/CORE-UPGRADE-2.md',
         'NOKIA225-REBOOT-FIX.md': 'docs/NOKIA225-REBOOT-FIX.md',
         'MRE-FILE-IO-FIX.md': 'docs/MRE-FILE-IO-FIX.md',
+        'ARENA-JAR-FIX.md': 'docs/ARENA-JAR-FIX.md',
         'NINJASCHOOL3.md': 'docs/NINJASCHOOL3.md',
         'reports/image-decode.json': 'build/image-decode/report.json',
         'reports/launch-safety.json': 'build/launch-safety.json',
@@ -75,6 +76,7 @@ def main():
         'Tự quét cả hai ổ; 2/8 chọn, 5 mở, # quét lại, * tạm dừng game.\n'
         'Tối đa 64 tệp, sâu 6 cấp; báo khi chạm giới hạn.\n'
         'Bản này sửa đọc ZIP qua MRE: seek dùng BASE_BEGIN, đọc theo khối 1 KiB.\n'
+        'ARENA.jar chạy tới menu đăng nhập; VXP yêu cầu 2048 KiB RAM.\n'
         'Bản ký: Cert ID 100, IMSI *, OpenSSL VERIFY OK.\n'
         'Chưa xác nhận gameplay đầy đủ hay FPS/firmware Nokia thật.\n'
         'Có tone MIDI MRE; Player nhạc/SFX từ stream vẫn chỉ mô phỏng.\n'

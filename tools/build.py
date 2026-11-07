@@ -28,7 +28,7 @@ def main():
         run([gcc,'-march=armv5te','-marm','-fpic','-nostartfiles','-pie','-Wl,--gc-sections','-Wl,--no-warn-rwx-segments','-Wl,-Map='+str(out/'PocketJava.map'),'-T',sdk/'scat.ld','-o',axf,*objs,'-Wl,--start-group',*sorted((sdk/'lib').glob('*.a')),'-lc','-lgcc','-Wl,--end-group'])
         res=out/'PocketJava-res.vxp';run([objcopy,'--strip-unneeded','--add-section','.vm_res='+str(sdk/'resource.bin'),axf,res])
         packdir=out/'pack';packdir.mkdir(exist_ok=True)
-        manifest=dict(name='PocketJava Preview',vendor='PocketJava',app_name_multilang=['PocketJava'],description='Experimental Java MIDlet interpreter',version=1,required_ram=1024,imsi=args.imsi,run_in_background=0)
+        manifest=dict(name='PocketJava Preview',vendor='PocketJava',app_name_multilang=['PocketJava'],description='Experimental Java MIDlet interpreter',version=1,required_ram=2048,imsi=args.imsi,run_in_background=0)
         (packdir/'manifest.json').write_text(json.dumps(manifest),encoding='utf8')
         target=out/('PocketJava-signed.vxp' if args.imsi else 'PocketJava.vxp')
         subprocess.run([sys.executable,str(sdk/'build.py'),str(res),str(target)],check=True,cwd=packdir)

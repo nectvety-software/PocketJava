@@ -7,7 +7,7 @@
     240,
     320
   ],
-  "required_ram_kib": 1024,
+  "required_ram_kib": 2048,
   "build_command": "python tools/build.py vxp",
   "test_command": "python tests/test_runtime.py",
   "artifact": "build/PocketJava.vxp",
