@@ -52,6 +52,7 @@ static int library_native(PJ*v,int b,const char*name,const char*desc,int32_t*a,i
         if(IS("nextRecord","()[B")){if(!rso||(int)o->data[1]>=(int)rso->data[1])return throw_exception(v,"java/util/NoSuchElementException",NULL);o->data[1]++;int id=o->data[1];size_t n;unsigned char*d=platform_record_read((uint32_t)rso->data[0],id,&n);if(!d)return throw_exception(v,"javax/microedition/rms/InvalidRecordIDException",NULL);*out=allocobj(v,0,18,(uint32_t)n);if(*out)memcpy(obj(v,*out)->data,d,n);pj_free(d);return *out?1:-1;}
         if(IS("reset","()V")){o->data[1]=0;return 1;}
         if(IS("destroy","()V")){o->data[0]=0;return 1;}
+        if(IS("rebuild","()V")){return 1;}
     }
     if(b==B_DATE){
         o=obj(v,a[0]);if(!o)return -1;
@@ -178,6 +179,38 @@ static int library_native(PJ*v,int b,const char*name,const char*desc,int32_t*a,i
         }
         if(IS("close","()V")){int32_t r=o->data[0];if(r){Object*ro=obj(v,r);if(ro){int rb=v->classes[ro->cls]->builtin;int32_t args[2]={r,0};native(v,rb,"close","()V",args,&a[0]);}o->data[0]=0;}return 1;}
     }
+    if(b==B_BYTE){
+        o=obj(v,a[0]);
+        if(IS("valueOf","(B)Ljava/lang/Byte;")){int32_t ref=builtin_object(v,"java/lang/Byte");if(ref){obj(v,ref)->data[0]=a[0];}*out=ref;return 1;}
+        if(IS("valueOf","(Ljava/lang/String;)Ljava/lang/Byte;")){int32_t number;int parsed=parse_integer(v,a[0],10,&number);if(parsed!=1)return parsed;int32_t ref=builtin_object(v,"java/lang/Byte");if(ref){obj(v,ref)->data[0]=number;}*out=ref;return 1;}
+        if(IS("parseByte","(Ljava/lang/String;)B")||IS("parseByte","(Ljava/lang/String;I)B")){int32_t number;int radix=IS("parseByte","(Ljava/lang/String;I)B")?a[1]:10;int parsed=parse_integer(v,a[0],radix,&number);if(parsed!=1)return parsed;*out=number;return 1;}
+        if(o){
+            if(IS("<init>","(B)V")||IS("<init>","(I)V")){o->data[0]=a[1];return 1;}
+            if(IS("<init>","(Ljava/lang/String;)V")){int32_t number;parse_integer(v,a[1],10,&number);o->data[0]=number;return 1;}
+            if(IS("byteValue","()B")){*out=o->data[0];return 1;}
+            if(IS("intValue","()I")){*out=o->data[0];return 1;}
+            if(IS("toString","()Ljava/lang/String;")){char buf[16];snprintf(buf,sizeof(buf),"%ld",(long)(int8_t)o->data[0]);*out=string(v,(const unsigned char*)buf,strlen(buf));return *out?1:-1;}
+        }
+    }
+    if(b==B_CHARACTER){
+        if(IS("valueOf","(C)Ljava/lang/Character;")){int32_t ref=builtin_object(v,"java/lang/Character");if(ref){obj(v,ref)->data[0]=a[0];}*out=ref;return 1;}
+        if(IS("toLowerCase","(C)C")){*out=lower_unit((uint32_t)(uint16_t)a[0]);return 1;}
+        if(IS("toUpperCase","(C)C")){*out=upper_unit((uint32_t)(uint16_t)a[0]);return 1;}
+        if(IS("isDigit","(C)Z")){*out=((uint16_t)a[0]>='0'&&(uint16_t)a[0]<='9')?1:0;return 1;}
+        if(IS("isLetter","(C)Z")){uint16_t c=(uint16_t)a[0];*out=((c>='a'&&c<='z')||(c>='A'&&c<='Z'))?1:0;return 1;}
+        if(IS("isLetterOrDigit","(C)Z")){uint16_t c=(uint16_t)a[0];*out=(((c>='a'&&c<='z')||(c>='A'&&c<='Z'))||(c>='0'&&c<='9'))?1:0;return 1;}
+        if(IS("isWhitespace","(C)Z")){uint16_t c=(uint16_t)a[0];*out=(c==' '||c=='\t'||c=='\n'||c=='\r'||c=='\f')?1:0;return 1;}
+        if(IS("isLowerCase","(C)Z")){uint16_t c=(uint16_t)a[0];*out=(c>='a'&&c<='z')?1:0;return 1;}
+        if(IS("isUpperCase","(C)Z")){uint16_t c=(uint16_t)a[0];*out=(c>='A'&&c<='Z')?1:0;return 1;}
+        if(IS("digit","(CI)I")){*out=-1;if(a[1]>=2&&a[1]<=36){uint16_t c=(uint16_t)a[0];if(c>='0'&&c<='9')*out=c-'0';else if(c>='a'&&c<='z')*out=c-'a'+10;else if(c>='A'&&c<='Z')*out=c-'A'+10;if(*out>=a[1])*out=-1;}return 1;}
+        if(IS("forDigit","(II)C")){*out=0;if(a[0]>=0&&a[0]<36&&a[1]>=2&&a[1]<=36){*out=(a[0]<10)?('0'+a[0]):('a'+a[0]-10);}return 1;}
+        o=obj(v,a[0]);
+        if(o){
+            if(IS("<init>","(C)V")){o->data[0]=a[1];return 1;}
+            if(IS("charValue","()C")){*out=(uint16_t)o->data[0];return 1;}
+            if(IS("toString","()Ljava/lang/String;")){char buf[8];size_t pos=0;utf8_put(buf,&pos,(uint32_t)(uint16_t)o->data[0]);buf[pos]=0;*out=string(v,(const unsigned char*)buf,pos);return *out?1:-1;}
+        }
+    }
     if(b==B_DIRECTUTILS&&IS("getDirectGraphics","(Ljavax/microedition/lcdui/Graphics;)Lcom/nokia/mid/ui/DirectGraphics;")){if(!a[0]||!obj(v,a[0]))return throw_exception(v,"java/lang/NullPointerException",NULL);*out=builtin_object(v,"com/nokia/mid/ui/DirectGraphics");if(!*out)return -1;o=obj(v,*out);if(o)o->data[0]=a[0];return o?1:-1;}
     if(b==B_DIRECTGRAPHICS&&IS("drawPixels","([SZIIIIIIII)V")){o=obj(v,a[0]);Object*arr=obj(v,a[1]);if(!o||!arr)return -1;if(arr->kind!=19)return throw_exception(v,"java/lang/IllegalArgumentException","drawPixels requires short[]");int transparent=a[2],off=a[3],scan=a[4],x=a[5],y=a[6],w=a[7],h=a[8],manip=a[9],format=a[10];if(w<=0||h<=0)return 1;if(manip!=0)return throw_exception(v,"java/lang/IllegalArgumentException","DirectGraphics manipulation unsupported");if(scan==0||scan==INT32_MIN||(scan<0?-scan:scan)<w)return throw_exception(v,"java/lang/IllegalArgumentException","Invalid DirectGraphics scanlength");int64_t first=off,last=(int64_t)off+(int64_t)(h-1)*scan,lo=first<last?first:last,hi=(first>last?first:last)+w-1;if(lo<0||hi<0||(uint64_t)hi>=arr->len)return throw_exception(v,"java/lang/ArrayIndexOutOfBoundsException",NULL);int dx=x+v->tx,dy=y+v->ty;for(int yy=0;yy<h;yy++){int run=0;uint32_t lastc=0;int64_t base=(int64_t)off+(int64_t)yy*scan;for(int xx=0;xx<=w;xx++){int opaque=0;uint32_t c=0;if(xx<w){uint16_t p=(uint16_t)array_get(arr,(uint32_t)(base+xx));if(format==4444){unsigned an=(p>>12)&15,r=(p>>8)&15,g=(p>>4)&15,b8=p&15;opaque=!transparent||an>=8;c=(r*17u)<<16|(g*17u)<<8|b8*17u;}else if(format==565){opaque=1;c=expand565(p);}else if(format==555){unsigned r=(p>>10)&31,g=(p>>5)&31,b8=p&31;opaque=1;c=(r*255u/31)<<16|(g*255u/31)<<8|b8*255u/31;}else if(format==444){unsigned r=(p>>8)&15,g=(p>>4)&15,b8=p&15;opaque=1;c=(r*17u)<<16|(g*17u)<<8|b8*17u;}else if(format==1555){unsigned r=(p>>10)&31,g=(p>>5)&31,b8=p&31;opaque=!transparent||(p&0x8000);c=(r*255u/31)<<16|(g*255u/31)<<8|b8*255u/31;}else return throw_exception(v,"java/lang/IllegalArgumentException","DirectGraphics pixel format unsupported");}if(run&&(!opaque||c!=lastc)){gfx_rect(v,o->data[0],dx+xx-run,dy+yy,run,1,lastc);run=0;}if(opaque){lastc=c;run++;}}}return 1;}
     if(b==B_DIRECTGRAPHICS&&IS("fillPolygon","([II[IIII)V")){o=obj(v,a[0]);Object*xa=obj(v,a[1]),*ya=obj(v,a[3]);if(!o||!xa||!ya)return -1;int xo=a[2],yo=a[4],n=a[5];if(xa->kind!=20||ya->kind!=20||xo<0||yo<0||n<3||(uint32_t)xo>xa->len||(uint32_t)yo>ya->len||(uint32_t)n>xa->len-(uint32_t)xo||(uint32_t)n>ya->len-(uint32_t)yo)return throw_exception(v,"java/lang/IllegalArgumentException","Invalid polygon arrays");int miny=array_get(ya,(uint32_t)yo),maxy=miny;for(int i=1;i<n;i++){int py=array_get(ya,(uint32_t)(yo+i));if(py<miny)miny=py;if(py>maxy)maxy=py;}int*cross=pj_alloc((size_t)n*sizeof(int));if(!cross){err(v,"Polygon RAM limit");return -1;}uint32_t color=(uint32_t)a[6]&0xffffffu;for(int y=miny;y<=maxy;y++){int count=0;for(int i=0,j=n-1;i<n;j=i++){int xi=array_get(xa,(uint32_t)(xo+i)),yi=array_get(ya,(uint32_t)(yo+i)),xj=array_get(xa,(uint32_t)(xo+j)),yj=array_get(ya,(uint32_t)(yo+j));if((yi<=y&&yj>y)||(yj<=y&&yi>y)){int64_t num=(int64_t)(y-yi)*(xj-xi);cross[count++]=xi+(int)(num/(yj-yi));}}for(int i=1;i<count;i++){int value=cross[i],j=i-1;while(j>=0&&cross[j]>value){cross[j+1]=cross[j];j--;}cross[j+1]=value;}for(int i=0;i+1<count;i+=2){int x1=cross[i],x2=cross[i+1];if(x2<x1){int t=x1;x1=x2;x2=t;}gfx_rect(v,o->data[0],x1+v->tx,y+v->ty,x2-x1+1,1,color);}}pj_free(cross);return 1;}
@@ -260,6 +293,7 @@ static int library_native(PJ*v,int b,const char*name,const char*desc,int32_t*a,i
         if(IS("<init>","()V")||IS("<init>","(I)V"))return 1;
         if(IS("<init>","(Ljava/io/OutputStream;)V")){o=obj(v,a[0]);if(o)o->data[0]=a[1];return 1;}
         if(IS("close","()V")||IS("flush","()V"))return 1;
+    if(IS("reset","()V")){o=obj(v,a[0]);if(o)o->data[0]=0;return 1;}
         if(IS("toByteArray","()[B")){o=obj(v,a[0]);if(!o)return -1;*out=allocobj(v,0,18,(uint32_t)o->data[0]);if(*out&&o->data[0])memcpy(obj(v,*out)->data,native_buffer_data(o),(size_t)o->data[0]);return *out?1:-1;}
         if(IS("write","([B)V")||IS("write","([BII)V")){Object*arr=obj(v,a[1]);if(!arr)return -1;int off=strstr(desc,"II")?a[2]:0,n=strstr(desc,"II")?a[3]:(int)arr->len;if(off<0||n<0||(uint32_t)off>arr->len||(uint32_t)n>arr->len-(uint32_t)off)return throw_exception(v,"java/lang/IndexOutOfBoundsException",NULL);return stream_write(v,a[0],(uint8_t*)arr->data+off,n);}
         if(IS("write","(I)V")||IS("writeByte","(I)V")||IS("writeBoolean","(Z)V")||IS("writeShort","(I)V")||IS("writeInt","(I)V")){unsigned char data[4];int n=!strcmp(name,"writeInt")?4:!strcmp(name,"writeShort")?2:1;uint32_t value=(uint32_t)a[1];for(int i=n-1;i>=0;i--){data[i]=(unsigned char)value;value>>=8;}return stream_write(v,a[0],data,n);}
