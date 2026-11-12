@@ -17,7 +17,7 @@
 #define STATIC 8
 #define B_RUNTIME 40
 #define B_LONG 39
-enum {B_OBJECT=1,B_MIDLET,B_DISPLAYABLE,B_CANVAS,B_GAMECANVAS,B_GRAPHICS,B_DISPLAY,B_STRING,B_MATH,B_SYSTEM,B_RANDOM,B_FONT,B_THREAD,B_RUNNABLE,B_CLASS,B_EXCEPTION,B_STRINGBUFFER,B_INTEGER,B_SHORT,B_VECTOR,B_ENUM,B_HASHTABLE,B_INPUT,B_OUTPUT,B_BYTEINPUT,B_BYTEOUTPUT,B_DATAINPUT,B_DATAOUTPUT,B_IMAGE,B_COMMANDLISTENER,B_RECORDSTORE,B_MANAGER,B_PLAYER,B_CONTROL,B_VOLUME,B_PRINTSTREAM,B_DIRECTUTILS,B_DIRECTGRAPHICS,B_DEVICECONTROL,B_RECORDENUMERATION,B_DATE};
+enum {B_OBJECT=1,B_MIDLET,B_DISPLAYABLE,B_CANVAS,B_GAMECANVAS,B_GRAPHICS,B_DISPLAY,B_STRING,B_MATH,B_SYSTEM,B_RANDOM,B_FONT,B_THREAD,B_RUNNABLE,B_CLASS,B_EXCEPTION,B_STRINGBUFFER,B_INTEGER,B_SHORT,B_VECTOR,B_ENUM,B_HASHTABLE,B_INPUT,B_OUTPUT,B_BYTEINPUT,B_BYTEOUTPUT,B_DATAINPUT,B_DATAOUTPUT,B_IMAGE,B_COMMANDLISTENER,B_RECORDSTORE,B_MANAGER,B_PLAYER,B_CONTROL,B_VOLUME,B_PRINTSTREAM,B_DIRECTUTILS,B_DIRECTGRAPHICS,B_DEVICECONTROL,B_RECORDENUMERATION,B_DATE,B_CALENDAR,B_TIMER,B_TIMERTASK,B_READER,B_INPUTSTREAMREADER,B_BUFFEREDREADER};
 typedef struct {uint32_t text_tag,payload;} CP;
 #define CP_TAG(p) ((unsigned)((p)->text_tag>>28))
 #define CP_TEXT(p) ((p)->text_tag&0x0fffffffu)
@@ -39,7 +39,7 @@ struct PJ {
     PJPlatform p; PJJar jar;unsigned char *jad;size_t jad_size;char error[PJ_ERROR_CAP],title[96],main[128];
     Class *classes[CLASSES];int nc,loading_depth;
     Object *object_pages[OBJECT_PAGES];uint8_t object_small_pages[OBJECT_PAGES/8];Frame *frames;int depth;int32_t *slots;Context *contexts[4];int current,yield,prefer_worker,worker_cursor;int32_t thrown,temporary[8];
-    int32_t midlet,canvas,graphics,display,system_out;int dirty,rendered,paused,stopped,start_pending;int32_t serially[4];int serially_n;
+    int32_t midlet,canvas,graphics,display,system_out;int dirty,rendered,paused,stopped,start_pending;int32_t serially[4];int serially_n;struct{int32_t timer,task;uint32_t due,period;int cancelled,periodic;} timers[8];int timer_n;
     int32_t runtime;
     uint32_t key_held,key_latched;
     struct {int32_t ref;uint16_t depth;uint8_t owner,pad;} monitors[32];
@@ -81,8 +81,8 @@ static void gc(PJ*v);
 static int builtin_name(const char*s){
     if(!strcmp(s,"java/lang/Long"))return B_LONG;
     if(!strcmp(s,"java/lang/Runtime"))return B_RUNTIME;
-    static const char *names[]={"","java/lang/Object","javax/microedition/midlet/MIDlet","javax/microedition/lcdui/Displayable","javax/microedition/lcdui/Canvas","javax/microedition/lcdui/game/GameCanvas","javax/microedition/lcdui/Graphics","javax/microedition/lcdui/Display","java/lang/String","java/lang/Math","java/lang/System","java/util/Random","javax/microedition/lcdui/Font","java/lang/Thread","java/lang/Runnable","java/lang/Class","java/lang/Exception","java/lang/StringBuffer","java/lang/Integer","java/lang/Short","java/util/Vector","java/util/Enumeration","java/util/Hashtable","java/io/InputStream","java/io/OutputStream","java/io/ByteArrayInputStream","java/io/ByteArrayOutputStream","java/io/DataInputStream","java/io/DataOutputStream","javax/microedition/lcdui/Image","javax/microedition/lcdui/CommandListener","javax/microedition/rms/RecordStore","javax/microedition/media/Manager","javax/microedition/media/Player","javax/microedition/media/Control","javax/microedition/media/control/VolumeControl","java/io/PrintStream","com/nokia/mid/ui/DirectUtils","com/nokia/mid/ui/DirectGraphics","com/nokia/mid/ui/DeviceControl","javax/microedition/rms/RecordEnumeration","java/util/Date"};
-    size_t n=strlen(s);int i;for(i=1;i<=B_DATE;i++)if(!strcmp(s,names[i]))return i;
+    static const char *names[]={"","java/lang/Object","javax/microedition/midlet/MIDlet","javax/microedition/lcdui/Displayable","javax/microedition/lcdui/Canvas","javax/microedition/lcdui/game/GameCanvas","javax/microedition/lcdui/Graphics","javax/microedition/lcdui/Display","java/lang/String","java/lang/Math","java/lang/System","java/util/Random","javax/microedition/lcdui/Font","java/lang/Thread","java/lang/Runnable","java/lang/Class","java/lang/Exception","java/lang/StringBuffer","java/lang/Integer","java/lang/Short","java/util/Vector","java/util/Enumeration","java/util/Hashtable","java/io/InputStream","java/io/OutputStream","java/io/ByteArrayInputStream","java/io/ByteArrayOutputStream","java/io/DataInputStream","java/io/DataOutputStream","javax/microedition/lcdui/Image","javax/microedition/lcdui/CommandListener","javax/microedition/rms/RecordStore","javax/microedition/media/Manager","javax/microedition/media/Player","javax/microedition/media/Control","javax/microedition/media/control/VolumeControl","java/io/PrintStream","com/nokia/mid/ui/DirectUtils","com/nokia/mid/ui/DirectGraphics","com/nokia/mid/ui/DeviceControl","javax/microedition/rms/RecordEnumeration","java/util/Date","java/util/Calendar","java/util/Timer","java/util/TimerTask","java/io/Reader","java/io/InputStreamReader","java/io/BufferedReader"};
+    size_t n=strlen(s);int i;for(i=1;i<=B_BUFFEREDREADER;i++)if(!strcmp(s,names[i]))return i;
     if((n>=9&&!strcmp(s+n-9,"Exception"))||!strcmp(s,"java/lang/Throwable")||(n>=5&&!strcmp(s+n-5,"Error")))return B_EXCEPTION;
     if(!strcmp(s,"java/lang/StringBuilder"))return B_STRINGBUFFER;
     if(!strcmp(s,"javax/microedition/media/Controllable"))return B_CONTROL;
@@ -140,7 +140,7 @@ static int loadclass_inner(PJ*v,const char*name){
     c=pj_alloc(sizeof(*c));if(!c){err(v,"Memory limit loading class");return 0;}memset(c,0,sizeof(*c));size_t name_size=strlen(name)+1;c->name=pj_alloc(name_size);if(!c->name){pj_free(c);err(v,"Memory limit loading class name");return 0;}memcpy(c->name,name,name_size);
     id=++v->nc;v->classes[id]=c;b=builtin_name(name);c->builtin=b;
     if(name[0]=='['){c->state=2;c->parent=loadclass(v,"java/lang/Object");return id;}
-    if(b){c->state=2;c->instance_fields=8;if(b!=B_OBJECT)c->parent=loadclass(v,"java/lang/Object");if(b==B_OBJECT)c->instance_fields=0;if(b==B_CANVAS)c->parent=loadclass(v,!strcmp(name,"com/nokia/mid/ui/FullCanvas")?"javax/microedition/lcdui/Canvas":"javax/microedition/lcdui/Displayable");if(b==B_GAMECANVAS)c->parent=loadclass(v,"javax/microedition/lcdui/Canvas");if(b==B_BYTEINPUT||b==B_DATAINPUT)c->parent=loadclass(v,"java/io/InputStream");if(b==B_BYTEOUTPUT||b==B_DATAOUTPUT)c->parent=loadclass(v,"java/io/OutputStream");return id;}
+    if(b){c->state=2;c->instance_fields=8;if(b!=B_OBJECT)c->parent=loadclass(v,"java/lang/Object");if(b==B_OBJECT)c->instance_fields=0;if(b==B_CANVAS)c->parent=loadclass(v,!strcmp(name,"com/nokia/mid/ui/FullCanvas")?"javax/microedition/lcdui/Canvas":"javax/microedition/lcdui/Displayable");if(b==B_GAMECANVAS)c->parent=loadclass(v,"javax/microedition/lcdui/Canvas");if(b==B_BYTEINPUT||b==B_DATAINPUT)c->parent=loadclass(v,"java/io/InputStream");if(b==B_BYTEOUTPUT||b==B_DATAOUTPUT)c->parent=loadclass(v,"java/io/OutputStream");if(b==B_INPUTSTREAMREADER||b==B_BUFFEREDREADER)c->parent=loadclass(v,"java/io/Reader");return id;}
     strcpy(path,name);strcat(path,".class");c->bytes=jar_extract(&v->jar,path,&size,v->error);
     if(!c->bytes){if(!v->error[0])snprintf(v->error,sizeof(v->error),"Missing class: %.80s",name);return 0;}
     c->loading=1;r=(Reader){v,c->bytes,size,0};
@@ -177,7 +177,7 @@ static int loadclass_inner(PJ*v,const char*name){
     if(!attrs(&r,c,NULL,NULL)||r.pos!=r.n){err(v,"Invalid class trailing data");return 0;}
     compact_class_bytes(c,size);c->loading=0;return id;
 }
-static Object *obj(PJ*v,int32_t ref){unsigned i=(uint32_t)ref-REF;Object*o=object_slot(v,i,0);if(!i||!o||!o->data){err(v,"Invalid / null object reference");return NULL;}return o;}
+static Object *obj(PJ*v,int32_t ref){unsigned i=(uint32_t)ref-REF;Object*o=object_slot(v,i,0);if(!i||!o||!o->data){if(v->depth){Frame*fr=v->frames+v->depth-1;Class*cc=v->classes[fr->cls];char mn[64];mn[0]=0;if(cc&&fr->method<cc->nm){utf(v,cc,cc->methods[fr->method].name,mn,sizeof(mn));}snprintf(v->error,sizeof(v->error),"Invalid / null object reference (%s.%s pc=%u)",cc?cc->name:"?",mn[0]?mn:"?",fr->pc);}else err(v,"Invalid / null object reference");return NULL;}return o;}
 static void mark(PJ*v,int32_t ref){unsigned i=(uint32_t)ref-REF;Object*o=object_slot(v,i,0);if(i&&o&&o->data&&!o->mark)o->mark=1;}
 static void gc(PJ*v){
     int i,j,changed;unsigned p,s;Object*o;
@@ -269,6 +269,7 @@ static unsigned be16(const unsigned char*p){return (unsigned)p[0]<<8|p[1];}
 static void propagate(PJ*v){while(v->thrown&&v->depth&&!v->error[0]){Frame*f=v->frames+v->depth-1;Class*c=v->classes[f->cls];Method*m=c->methods+f->method;for(unsigned i=0;i<m->nh;i++){const unsigned char*h=c->bytes+m->code+m->len+2+i*8;unsigned start=be16(h),end=be16(h+2),target=be16(h+4),type=be16(h+6);if(f->lastpc<start||f->lastpc>=end)continue;char name[128];Object*ex=obj(v,v->thrown);if(!ex)return;int matches=!type;if(type&&cname(v,c,type,name)){const char*actual=v->classes[ex->cls]->name;matches=!strcmp(name,actual)||!strcmp(name,"java/lang/Exception")||!strcmp(name,"java/lang/Throwable");}if(matches){if(target>=m->len){err(v,"Invalid exception handler");return;}int32_t ref=v->thrown;v->thrown=0;f->sp=f->base+m->locals;f->pc=target;push(v,f,ref);return;}}v->depth--;}
     if(v->thrown&&!v->error[0]){Object*ex=obj(v,v->thrown);if(ex)snprintf(v->error,sizeof(v->error),"Uncaught %.100s",v->classes[ex->cls]->name);}}
 #include "png.inc"
+static int native(PJ*v,int b,const char*name,const char*desc,int32_t*a,int32_t*out);
 #include "library.inc"
 static int native(PJ*v,int b,const char*name,const char*desc,int32_t*a,int32_t*out){
     int handled;*out=0;v->native_high=0;handled=library_native(v,b,name,desc,a,out);if(handled)return handled;
@@ -446,6 +447,11 @@ static void execute(PJ*v){
     case 172:case 174:case 176:a=POP();returnframe(v,1,a);break;case 177:returnframe(v,0,0);break;
     case 178:case 179:case 180:case 181:{Field*field=NULL;int cur,guard=0;i=WORD();if(!member(v,c,i,9,&owner,name,desc))break;cur=owner;while(cur&&guard++<CLASSES){Class*k=v->classes[cur];unsigned z;for(z=0;z<k->nf;z++)if(eq(v,k,k->fields[z].name,name)&&eq(v,k,k->fields[z].desc,desc)){field=k->fields+z;break;}if(field)break;cur=k->parent;}
         if(!field&&op==178&&v->classes[owner]->builtin==B_SYSTEM&&!strcmp(name,"out")&&!strcmp(desc,"Ljava/io/PrintStream;")){if(!v->system_out){int ps=loadclass(v,"java/io/PrintStream");if(!ps)break;v->system_out=allocobj(v,ps,0,v->classes[ps]->instance_fields);if(!v->system_out)break;}PUSH(v->system_out);break;}
+        if(!field&&op==178&&v->classes[owner]->builtin==B_CALENDAR){
+            int cv=0,cf=0;
+            if(!strcmp(name,"YEAR")){cv=1;cf=1;}else if(!strcmp(name,"MONTH")){cv=2;cf=1;}else if(!strcmp(name,"DATE")||!strcmp(name,"DAY_OF_MONTH")){cv=5;cf=1;}else if(!strcmp(name,"DAY_OF_WEEK")){cv=7;cf=1;}else if(!strcmp(name,"HOUR")){cv=10;cf=1;}else if(!strcmp(name,"HOUR_OF_DAY")){cv=11;cf=1;}else if(!strcmp(name,"MINUTE")){cv=12;cf=1;}else if(!strcmp(name,"SECOND")){cv=13;cf=1;}else if(!strcmp(name,"MILLISECOND")){cv=14;cf=1;}else if(!strcmp(name,"AM_PM")){cv=9;cf=1;}else if(!strcmp(name,"AM")){cv=0;cf=1;}else if(!strcmp(name,"PM")){cv=1;cf=1;}else if(!strcmp(name,"SUNDAY")){cv=1;cf=1;}else if(!strcmp(name,"MONDAY")){cv=2;cf=1;}else if(!strcmp(name,"TUESDAY")){cv=3;cf=1;}else if(!strcmp(name,"WEDNESDAY")){cv=4;cf=1;}else if(!strcmp(name,"THURSDAY")){cv=5;cf=1;}else if(!strcmp(name,"FRIDAY")){cv=6;cf=1;}else if(!strcmp(name,"SATURDAY")){cv=7;cf=1;}else if(!strcmp(name,"JANUARY")){cv=0;cf=1;}else if(!strcmp(name,"FEBRUARY")){cv=1;cf=1;}else if(!strcmp(name,"MARCH")){cv=2;cf=1;}else if(!strcmp(name,"APRIL")){cv=3;cf=1;}else if(!strcmp(name,"MAY")){cv=4;cf=1;}else if(!strcmp(name,"JUNE")){cv=5;cf=1;}else if(!strcmp(name,"JULY")){cv=6;cf=1;}else if(!strcmp(name,"AUGUST")){cv=7;cf=1;}else if(!strcmp(name,"SEPTEMBER")){cv=8;cf=1;}else if(!strcmp(name,"OCTOBER")){cv=9;cf=1;}else if(!strcmp(name,"NOVEMBER")){cv=10;cf=1;}else if(!strcmp(name,"DECEMBER")){cv=11;cf=1;}else if(!strcmp(name,"ERA")){cv=0;cf=1;}else if(!strcmp(name,"FIELD_COUNT")){cv=17;cf=1;}
+            if(cf){PUSH(cv);break;}
+        }
         if(!field){snprintf(v->error,sizeof(v->error),"Unsupported field: %.36s.%.32s",v->classes[owner]->name,name);break;}
         if((!!(field->flags&STATIC))!=(op<=179)){err(v,"Field static/instance mismatch");break;}
         if(op<=179){if(!initialize(v,cur)){f->pc=pc0;break;}if(op==178){if(field->wide)PUSH(field->high);PUSH(field->value);}else{field->value=POP();if(field->wide)field->high=POP();}}
@@ -484,6 +490,11 @@ static int schedule(PJ*v){
     if(!v->midlet||v->start_pending){launch(v);return v->depth>0;}
     if(v->kr!=v->kw&&v->canvas){unsigned idx=v->kr++&15;return call_event(v,v->canvas,v->keys[idx].release?"keyReleased":"keyPressed","(I)V",v->keys[idx].key);}
     if(v->serially_n){for(int i=0;i<v->serially_n;i++){int32_t r=v->serially[i];Object*ro=r?obj(v,r):NULL;if(ro){int cls=ro->cls;int mi=method(v,&cls,"run","()V");if(mi>=0)pushframe(v,cls,mi,NULL,0,0);}}v->serially_n=0;if(v->depth)return 1;}
+    /* drain due timers */{
+        uint32_t now=v->p.clock_ms();int fired=-1;
+        for(int i=0;i<v->timer_n;i++){if(v->timers[i].cancelled)continue;if((int32_t)(now-v->timers[i].due)>=0){fired=i;break;}}
+        if(fired>=0){int32_t task=v->timers[fired].task; if(v->timers[fired].periodic){v->timers[fired].due+=v->timers[fired].period;}else{v->timers[fired].cancelled=1;} if(task){Object*to=obj(v,task);if(to){int cls=to->cls;int mi=method(v,&cls,"run","()V");if(mi>=0)pushframe(v,cls,mi,NULL,0,0);}} if(v->depth)return 1;}
+    }
     if(v->dirty&&v->canvas){v->dirty=0;v->tx=v->ty=0;v->cx=v->cy=0;v->cw=240;v->ch=320;v->color=0;return call_event(v,v->canvas,"paint","(Ljavax/microedition/lcdui/Graphics;)V",v->graphics);}
     return 0;
 }

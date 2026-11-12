@@ -61,6 +61,123 @@ static int library_native(PJ*v,int b,const char*name,const char*desc,int32_t*a,i
         if(IS("setTime","(J)V")){o->data[0]=a[2];o->data[1]=a[1];return 1;}
         if(IS("toString","()Ljava/lang/String;")){char buf[40];uint64_t t=(uint64_t)(uint32_t)o->data[0]|(uint64_t)(uint32_t)o->data[1]<<32;snprintf(buf,sizeof(buf),"%llu",(unsigned long long)t);*out=string(v,(const unsigned char*)buf,strlen(buf));return *out?1:-1;}
     }
+    if(b==B_CALENDAR){
+        if(IS("getInstance","()Ljava/util/Calendar;")){*out=builtin_object(v,"java/util/Calendar");if(*out){Object*co=obj(v,*out);if(co){co->data[0]=0;co->data[1]=0;}}return *out?1:-1;}
+        o=obj(v,a[0]);if(!o)return -1;
+        if(IS("getTime","()Ljava/util/Date;")){*out=builtin_object(v,"java/util/Date");if(*out){Object*do2=obj(v,*out);if(do2){do2->data[0]=o->data[0];do2->data[1]=o->data[1];}}return *out?1:-1;}
+        if(IS("getTimeInMillis","()J")){v->native_high=o->data[1];*out=o->data[0];return 1;}
+        if(IS("setTime","(Ljava/util/Date;)V")){Object*d=o?obj(v,a[1]):NULL;if(d){o->data[0]=d->data[0];o->data[1]=d->data[1];}return 1;}
+        if(IS("setTimeInMillis","(J)V")){o->data[0]=a[2];o->data[1]=a[1];return 1;}
+        if(IS("get","(I)I")){*out=0;return 1;}
+        if(IS("add","(II)V")){return 1;}
+        if(IS("roll","(II)V")){return 1;}
+        if(IS("clear","()V")){o->data[0]=0;o->data[1]=0;return 1;}
+        if(IS("clear","(I)V")){return 1;}
+    }
+    if(b==B_TIMER){
+        o=obj(v,a[0]); /* may be null for static? Timer is instance; methods instance. getInstance not static. */
+        if(IS("<init>","()V")||IS("<init>","(Z)V")){return 1;}
+        if(IS("schedule","(Ljava/util/TimerTask;J)V")){
+            if(!a[0]||!a[1])return throw_exception(v,"java/lang/NullPointerException",NULL);
+            if(v->timer_n>=8)return throw_exception(v,"java/lang/IllegalStateException","Timer queue full");
+            v->timers[v->timer_n].timer=a[0];v->timers[v->timer_n].task=a[1];
+            v->timers[v->timer_n].due=v->p.clock_ms()+(uint32_t)(a[2]>0x7fffffff?0x7fffffff:a[2]);
+            v->timers[v->timer_n].period=0;v->timers[v->timer_n].periodic=0;v->timers[v->timer_n].cancelled=0;v->timer_n++;
+            return 1;
+        }
+        if(IS("schedule","(Ljava/util/TimerTask;JJ)V")){
+            if(!a[0]||!a[1])return throw_exception(v,"java/lang/NullPointerException",NULL);
+            if(v->timer_n>=8)return throw_exception(v,"java/lang/IllegalStateException","Timer queue full");
+            uint32_t delay=a[2]>0x7fffffff?0x7fffffff:(uint32_t)a[2];
+            uint32_t period=a[3]>0x7fffffff?0x7fffffff:(uint32_t)a[3];
+            v->timers[v->timer_n].timer=a[0];v->timers[v->timer_n].task=a[1];
+            v->timers[v->timer_n].due=v->p.clock_ms()+delay;
+            v->timers[v->timer_n].period=period;v->timers[v->timer_n].periodic=1;v->timers[v->timer_n].cancelled=0;v->timer_n++;
+            return 1;
+        }
+        if(IS("scheduleAtFixedRate","(Ljava/util/TimerTask;JJ)V")){ /* delegate to periodic */ 
+            if(!a[0]||!a[1])return throw_exception(v,"java/lang/NullPointerException",NULL);
+            if(v->timer_n>=8)return throw_exception(v,"java/lang/IllegalStateException","Timer queue full");
+            uint32_t delay=a[2]>0x7fffffff?0x7fffffff:(uint32_t)a[2];
+            uint32_t period=a[3]>0x7fffffff?0x7fffffff:(uint32_t)a[3];
+            v->timers[v->timer_n].timer=a[0];v->timers[v->timer_n].task=a[1];
+            v->timers[v->timer_n].due=v->p.clock_ms()+delay;
+            v->timers[v->timer_n].period=period;v->timers[v->timer_n].periodic=1;v->timers[v->timer_n].cancelled=0;v->timer_n++;
+            return 1;
+        }
+        if(IS("cancel","()V")){for(int i=0;i<v->timer_n;i++)if(v->timers[i].timer==a[0])v->timers[i].cancelled=1;return 1;}
+        if(IS("purge","()I")){*out=0;return 1;}
+    }
+    if(b==B_TIMERTASK){
+        if(IS("<init>","()V")){return 1;}
+        if(IS("cancel","()Z")){int found=0;for(int i=0;i<v->timer_n;i++)if(v->timers[i].task==a[0]&&!v->timers[i].cancelled){v->timers[i].cancelled=1;found=1;}*out=found;return 1;}
+        if(IS("scheduledExecutionTime","()J")){v->native_high=0;*out=0;return 1;}
+    }
+    if(b==B_INPUTSTREAMREADER){
+        o=obj(v,a[0]);if(!o)return -1;
+        if(IS("<init>","(Ljava/io/InputStream;)V")||IS("<init>","(Ljava/io/InputStream;Ljava/lang/String;)V")){o->data[0]=a[1];return 1;}
+        if(IS("read","()I")){
+            int32_t stream=o->data[0];if(!stream){*out=-1;return 1;}
+            Object*so=obj(v,stream);if(!so){*out=-1;return 1;}
+            int sb=v->classes[so->cls]->builtin;int32_t args[2]={stream,0},r=0;
+            if(native(v,sb,"read","()I",args,&r))*out=r;else *out=-1;
+            return 1;
+        }
+        if(IS("read","([CII)I")){
+            Object*arr=obj(v,a[1]);if(!arr)return -1;int off=a[2],len=a[3];if(off<0||len<0||(uint32_t)off>arr->len||(uint32_t)len>arr->len-(uint32_t)off){return throw_exception(v,"java/lang/IndexOutOfBoundsException",NULL);}
+            int read=0;
+            for(int i=0;i<len;i++){
+                int32_t stream=o->data[0];if(!stream){if(read==0)*out=-1;else *out=read;return 1;}
+                Object*so=obj(v,stream);if(!so){if(read==0)*out=-1;else *out=read;return 1;}
+                int sb=v->classes[so->cls]->builtin;int32_t args[2]={stream,0},r=0;
+                if(!native(v,sb,"read","()I",args,&r)){if(read==0)*out=-1;else *out=read;return 1;}
+                if(r<0){if(read==0)*out=-1;else *out=read;return 1;}
+                array_put(arr,(uint32_t)(off+i),(int32_t)(uint16_t)r);read++;
+            }
+            *out=read;return 1;
+        }
+        if(IS("close","()V")){int32_t stream=o->data[0];if(stream){Object*so=obj(v,stream);if(so){int sb=v->classes[so->cls]->builtin;int32_t args[2]={stream,0};native(v,sb,"close","()V",args,&a[0]);}o->data[0]=0;}return 1;}
+    }
+    if(b==B_BUFFEREDREADER){
+        o=obj(v,a[0]);if(!o)return -1;
+        if(IS("<init>","(Ljava/io/Reader;)V")||IS("<init>","(Ljava/io/Reader;I)V")){o->data[0]=a[1];return 1;}
+        if(IS("read","()I")){
+            int32_t r=o->data[0];if(!r){*out=-1;return 1;}
+            Object*ro=obj(v,r);if(!ro){*out=-1;return 1;}
+            int rb=v->classes[ro->cls]->builtin;int32_t args[2]={r,0},res=0;
+            if(native(v,rb,"read","()I",args,&res))*out=res;else *out=-1;
+            return 1;
+        }
+        if(IS("read","([CII)I")){
+            Object*arr=obj(v,a[1]);if(!arr)return -1;int off=a[2],len=a[3];if(off<0||len<0||(uint32_t)off>arr->len||(uint32_t)len>arr->len-(uint32_t)off){return throw_exception(v,"java/lang/IndexOutOfBoundsException",NULL);}
+            int read=0;
+            for(int i=0;i<len;i++){
+                int32_t r=o->data[0];if(!r){if(read==0)*out=-1;else *out=read;return 1;}
+                Object*ro=obj(v,r);if(!ro){if(read==0)*out=-1;else *out=read;return 1;}
+                int rb=v->classes[ro->cls]->builtin;int32_t args[2]={r,0},res=0;
+                if(!native(v,rb,"read","()I",args,&res)){if(read==0)*out=-1;else *out=read;return 1;}
+                if(res<0){if(read==0)*out=-1;else *out=read;return 1;}
+                array_put(arr,(uint32_t)(off+i),(int32_t)(uint16_t)res);read++;
+            }
+            *out=read;return 1;
+        }
+        if(IS("readLine","()Ljava/lang/String;")){
+            size_t cap=256,pos=0;char*buf=pj_alloc(cap);if(!buf){err(v,"Reader RAM limit");return -1;}
+            for(;;){
+                int32_t r=o->data[0];if(!r)break;
+                Object*ro=obj(v,r);if(!ro)break;
+                int rb=v->classes[ro->cls]->builtin;int32_t args[2]={r,0},res=0;
+                if(!native(v,rb,"read","()I",args,&res))break;
+                if(res<0)break;
+                if(res=='\n')break;
+                if(res=='\r')continue;
+                if(pos+4>=cap){cap*=2;char*nbuf=pj_realloc(buf,cap);if(!nbuf){pj_free(buf);err(v,"Reader RAM limit");return -1;}buf=nbuf;}
+                utf8_put(buf,&pos,(uint32_t)res);
+            }
+            buf[pos]=0;*out=string(v,(const unsigned char*)buf,pos);pj_free(buf);return *out?1:-1;
+        }
+        if(IS("close","()V")){int32_t r=o->data[0];if(r){Object*ro=obj(v,r);if(ro){int rb=v->classes[ro->cls]->builtin;int32_t args[2]={r,0};native(v,rb,"close","()V",args,&a[0]);}o->data[0]=0;}return 1;}
+    }
     if(b==B_DIRECTUTILS&&IS("getDirectGraphics","(Ljavax/microedition/lcdui/Graphics;)Lcom/nokia/mid/ui/DirectGraphics;")){if(!a[0]||!obj(v,a[0]))return throw_exception(v,"java/lang/NullPointerException",NULL);*out=builtin_object(v,"com/nokia/mid/ui/DirectGraphics");if(!*out)return -1;o=obj(v,*out);if(o)o->data[0]=a[0];return o?1:-1;}
     if(b==B_DIRECTGRAPHICS&&IS("drawPixels","([SZIIIIIIII)V")){o=obj(v,a[0]);Object*arr=obj(v,a[1]);if(!o||!arr)return -1;if(arr->kind!=19)return throw_exception(v,"java/lang/IllegalArgumentException","drawPixels requires short[]");int transparent=a[2],off=a[3],scan=a[4],x=a[5],y=a[6],w=a[7],h=a[8],manip=a[9],format=a[10];if(w<=0||h<=0)return 1;if(manip!=0)return throw_exception(v,"java/lang/IllegalArgumentException","DirectGraphics manipulation unsupported");if(scan==0||scan==INT32_MIN||(scan<0?-scan:scan)<w)return throw_exception(v,"java/lang/IllegalArgumentException","Invalid DirectGraphics scanlength");int64_t first=off,last=(int64_t)off+(int64_t)(h-1)*scan,lo=first<last?first:last,hi=(first>last?first:last)+w-1;if(lo<0||hi<0||(uint64_t)hi>=arr->len)return throw_exception(v,"java/lang/ArrayIndexOutOfBoundsException",NULL);int dx=x+v->tx,dy=y+v->ty;for(int yy=0;yy<h;yy++){int run=0;uint32_t lastc=0;int64_t base=(int64_t)off+(int64_t)yy*scan;for(int xx=0;xx<=w;xx++){int opaque=0;uint32_t c=0;if(xx<w){uint16_t p=(uint16_t)array_get(arr,(uint32_t)(base+xx));if(format==4444){unsigned an=(p>>12)&15,r=(p>>8)&15,g=(p>>4)&15,b8=p&15;opaque=!transparent||an>=8;c=(r*17u)<<16|(g*17u)<<8|b8*17u;}else if(format==565){opaque=1;c=expand565(p);}else if(format==555){unsigned r=(p>>10)&31,g=(p>>5)&31,b8=p&31;opaque=1;c=(r*255u/31)<<16|(g*255u/31)<<8|b8*255u/31;}else if(format==444){unsigned r=(p>>8)&15,g=(p>>4)&15,b8=p&15;opaque=1;c=(r*17u)<<16|(g*17u)<<8|b8*17u;}else if(format==1555){unsigned r=(p>>10)&31,g=(p>>5)&31,b8=p&31;opaque=!transparent||(p&0x8000);c=(r*255u/31)<<16|(g*255u/31)<<8|b8*255u/31;}else return throw_exception(v,"java/lang/IllegalArgumentException","DirectGraphics pixel format unsupported");}if(run&&(!opaque||c!=lastc)){gfx_rect(v,o->data[0],dx+xx-run,dy+yy,run,1,lastc);run=0;}if(opaque){lastc=c;run++;}}}return 1;}
     if(b==B_DIRECTGRAPHICS&&IS("fillPolygon","([II[IIII)V")){o=obj(v,a[0]);Object*xa=obj(v,a[1]),*ya=obj(v,a[3]);if(!o||!xa||!ya)return -1;int xo=a[2],yo=a[4],n=a[5];if(xa->kind!=20||ya->kind!=20||xo<0||yo<0||n<3||(uint32_t)xo>xa->len||(uint32_t)yo>ya->len||(uint32_t)n>xa->len-(uint32_t)xo||(uint32_t)n>ya->len-(uint32_t)yo)return throw_exception(v,"java/lang/IllegalArgumentException","Invalid polygon arrays");int miny=array_get(ya,(uint32_t)yo),maxy=miny;for(int i=1;i<n;i++){int py=array_get(ya,(uint32_t)(yo+i));if(py<miny)miny=py;if(py>maxy)maxy=py;}int*cross=pj_alloc((size_t)n*sizeof(int));if(!cross){err(v,"Polygon RAM limit");return -1;}uint32_t color=(uint32_t)a[6]&0xffffffu;for(int y=miny;y<=maxy;y++){int count=0;for(int i=0,j=n-1;i<n;j=i++){int xi=array_get(xa,(uint32_t)(xo+i)),yi=array_get(ya,(uint32_t)(yo+i)),xj=array_get(xa,(uint32_t)(xo+j)),yj=array_get(ya,(uint32_t)(yo+j));if((yi<=y&&yj>y)||(yj<=y&&yi>y)){int64_t num=(int64_t)(y-yi)*(xj-xi);cross[count++]=xi+(int)(num/(yj-yi));}}for(int i=1;i<count;i++){int value=cross[i],j=i-1;while(j>=0&&cross[j]>value){cross[j+1]=cross[j];j--;}cross[j+1]=value;}for(int i=0;i+1<count;i+=2){int x1=cross[i],x2=cross[i+1];if(x2<x1){int t=x1;x1=x2;x2=t;}gfx_rect(v,o->data[0],x1+v->tx,y+v->ty,x2-x1+1,1,color);}}pj_free(cross);return 1;}
