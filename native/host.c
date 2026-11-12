@@ -26,3 +26,4 @@ int main(int argc,char**argv){PJ*v;unsigned i,steps=1000;int ok;FILE*f;size_t ba
 
 unsigned char *platform_record_read(uint32_t store,int id,size_t*n){char path[100];snprintf(path,sizeof(path),"build/rms-%08lx-%d.dat",(unsigned long)store,id);return platform_read(path,65536,n);}
 int platform_record_write(uint32_t store,int id,const void*data,size_t n){char path[100];snprintf(path,sizeof(path),"build/rms-%08lx-%d.dat",(unsigned long)store,id);FILE*f=fopen(path,"wb");if(!f)return 0;int ok=fwrite(data,1,n,f)==n;return fclose(f)==0&&ok;}
+int platform_record_remove(uint32_t store,int id){char path[100];snprintf(path,sizeof(path),"build/rms-%08lx-%d.dat",(unsigned long)store,id);return remove(path)==0;}

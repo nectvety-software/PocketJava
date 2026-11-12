@@ -34,6 +34,7 @@ int platform_tone(int note,int duration,int volume);
 void platform_tone_stop(void);
 int platform_record_write(uint32_t store,int id,const void *data,size_t n);
 unsigned char *platform_record_read(uint32_t store,int id,size_t *n);
+int platform_record_remove(uint32_t store,int id);
 typedef struct { unsigned char *data,*directory; size_t size; uint32_t cd, end; uint16_t entries; intptr_t file; } PJJar;
 int jar_open(PJJar *j, unsigned char *data, size_t size, char *error);
 int jar_open_file(PJJar *j,const char *path,char *error);

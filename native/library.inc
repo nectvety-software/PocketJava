@@ -35,6 +35,11 @@ static int library_native(PJ*v,int b,const char*name,const char*desc,int32_t*a,i
         if(IS("addRecord","([BII)I")||IS("setRecord","(I[BII)V")){int add=name[0]=='a',id=add?o->data[1]+1:a[1],base=add?1:2;Object*data=obj(v,a[base]);if(!data)return -1;int off=a[base+1],len=a[base+2];if(id<1||id>32||(!add&&id>o->data[1])||off<0||len<0||len>65536||(uint32_t)off>data->len||(uint32_t)len>data->len-(uint32_t)off)return throw_exception(v,"javax/microedition/rms/RecordStoreException","Invalid record");if(!platform_record_write((uint32_t)o->data[0],id,(uint8_t*)data->data+off,(size_t)len))return throw_exception(v,"javax/microedition/rms/RecordStoreException","Save failed");if(add){unsigned char meta[4]={(unsigned char)id,0,0,0};if(!platform_record_write((uint32_t)o->data[0],0,meta,4))return throw_exception(v,"javax/microedition/rms/RecordStoreException","Cannot commit store");o->data[1]=id;*out=id;}return 1;}
     if(IS("getNextRecordID","()I")){*out=o->data[1]+1;if(*out<1)*out=1;if(*out>32)*out=1;return 1;}
     if(IS("getLastModified","()J")){v->native_high=0;*out=0;return 1;}
+    if(IS("getRecordSize","(I)I")){size_t n;unsigned char*d=platform_record_read((uint32_t)o->data[0],a[1],&n);if(!d)return throw_exception(v,"javax/microedition/rms/InvalidRecordIDException",NULL);pj_free(d);*out=(int32_t)n;return 1;}
+    if(IS("deleteRecord","(I)V")){if(a[1]<1||a[1]>(int)o->data[1])return throw_exception(v,"javax/microedition/rms/InvalidRecordIDException",NULL);platform_record_remove((uint32_t)o->data[0],a[1]);return 1;}
+    if(IS("getSizeAvailable","()I")){*out=100000;return 1;}
+    if(IS("getVersion","()I")){*out=1;return 1;}
+    if(IS("getSize","()I")){*out=(int)o->data[1]*64;return 1;}
     if(IS("enumerateRecords","(Ljavax/microedition/rms/RecordFilter;Ljavax/microedition/rms/RecordComparator;Z)Ljavax/microedition/rms/RecordEnumeration;")){*out=builtin_object(v,"javax/microedition/rms/RecordEnumeration");if(*out){Object*e=obj(v,*out);if(e){e->data[0]=a[0];e->data[1]=0;}}return *out?1:-1;}
     }
     if(b==B_RECORDENUMERATION){

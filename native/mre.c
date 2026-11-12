@@ -71,3 +71,4 @@ void vm_main(void){vm_reg_sysevt_callback(system_event);vm_reg_keyboard_callback
 
 unsigned char *platform_record_read(uint32_t store,int id,size_t*n){char path[100];snprintf(path,sizeof(path),"%srms-%08lx-%d.dat",root,(unsigned long)store,id);return platform_read(path,65536,n);}
 int platform_record_write(uint32_t store,int id,const void*data,size_t n){char path[100];VMWCHAR wp[100];VMUINT written=0;snprintf(path,sizeof(path),"%srms-%08lx-%d.dat",root,(unsigned long)store,id);wide(wp,path,100);VMFILE f=vm_file_open(wp,MODE_CREATE_ALWAYS_WRITE,1);if(f<0)return 0;int ok=vm_file_write(f,(void*)data,(VMUINT)n,&written)>=0&&written==n;vm_file_close(f);return ok;}
+int platform_record_remove(uint32_t store,int id){char path[100];VMWCHAR wp[100];snprintf(path,sizeof(path),"%srms-%08lx-%d.dat",root,(unsigned long)store,id);wide(wp,path,100);return vm_file_delete(wp)==0;}
