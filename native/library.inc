@@ -40,12 +40,21 @@ static int library_native(PJ*v,int b,const char*name,const char*desc,int32_t*a,i
     if(b==B_RECORDENUMERATION){
         o=obj(v,a[0]);if(!o)return -1;
         Object*rso=o->data[0]?obj(v,o->data[0]):NULL;
-        if(IS("hasMoreElements","()Z")){*out=(rso&&(int)rso->data[1]>(int)o->data[1])?1:0;return 1;}
+        if(IS("hasMoreElements","()Z")||IS("hasNextElement","()Z")){*out=(rso&&(int)rso->data[1]>(int)o->data[1])?1:0;return 1;}
+        if(IS("nextElement","()[B")){if(!rso||(int)o->data[1]>=(int)rso->data[1])return throw_exception(v,"java/util/NoSuchElementException",NULL);o->data[1]++;int id=o->data[1];size_t n;unsigned char*d=platform_record_read((uint32_t)rso->data[0],id,&n);if(!d)return throw_exception(v,"javax/microedition/rms/InvalidRecordIDException",NULL);*out=allocobj(v,0,18,(uint32_t)n);if(*out)memcpy(obj(v,*out)->data,d,n);pj_free(d);return *out?1:-1;}
         if(IS("numRecords","()I")){*out=rso?rso->data[1]:0;return 1;}
         if(IS("nextRecordId","()I")){if(!rso||(int)o->data[1]>=(int)rso->data[1])return throw_exception(v,"java/util/NoSuchElementException",NULL);o->data[1]++;*out=o->data[1];return 1;}
         if(IS("nextRecord","()[B")){if(!rso||(int)o->data[1]>=(int)rso->data[1])return throw_exception(v,"java/util/NoSuchElementException",NULL);o->data[1]++;int id=o->data[1];size_t n;unsigned char*d=platform_record_read((uint32_t)rso->data[0],id,&n);if(!d)return throw_exception(v,"javax/microedition/rms/InvalidRecordIDException",NULL);*out=allocobj(v,0,18,(uint32_t)n);if(*out)memcpy(obj(v,*out)->data,d,n);pj_free(d);return *out?1:-1;}
         if(IS("reset","()V")){o->data[1]=0;return 1;}
         if(IS("destroy","()V")){o->data[0]=0;return 1;}
+    }
+    if(b==B_DATE){
+        o=obj(v,a[0]);if(!o)return -1;
+        if(IS("<init>","()V")){o->data[0]=0;o->data[1]=0;return 1;}
+        if(IS("<init>","(J)V")){o->data[0]=a[2];o->data[1]=a[1];return 1;}
+        if(IS("getTime","()J")){v->native_high=o->data[1];*out=o->data[0];return 1;}
+        if(IS("setTime","(J)V")){o->data[0]=a[2];o->data[1]=a[1];return 1;}
+        if(IS("toString","()Ljava/lang/String;")){char buf[40];uint64_t t=(uint64_t)(uint32_t)o->data[0]|(uint64_t)(uint32_t)o->data[1]<<32;snprintf(buf,sizeof(buf),"%llu",(unsigned long long)t);*out=string(v,(const unsigned char*)buf,strlen(buf));return *out?1:-1;}
     }
     if(b==B_DIRECTUTILS&&IS("getDirectGraphics","(Ljavax/microedition/lcdui/Graphics;)Lcom/nokia/mid/ui/DirectGraphics;")){if(!a[0]||!obj(v,a[0]))return throw_exception(v,"java/lang/NullPointerException",NULL);*out=builtin_object(v,"com/nokia/mid/ui/DirectGraphics");if(!*out)return -1;o=obj(v,*out);if(o)o->data[0]=a[0];return o?1:-1;}
     if(b==B_DIRECTGRAPHICS&&IS("drawPixels","([SZIIIIIIII)V")){o=obj(v,a[0]);Object*arr=obj(v,a[1]);if(!o||!arr)return -1;if(arr->kind!=19)return throw_exception(v,"java/lang/IllegalArgumentException","drawPixels requires short[]");int transparent=a[2],off=a[3],scan=a[4],x=a[5],y=a[6],w=a[7],h=a[8],manip=a[9],format=a[10];if(w<=0||h<=0)return 1;if(manip!=0)return throw_exception(v,"java/lang/IllegalArgumentException","DirectGraphics manipulation unsupported");if(scan==0||scan==INT32_MIN||(scan<0?-scan:scan)<w)return throw_exception(v,"java/lang/IllegalArgumentException","Invalid DirectGraphics scanlength");int64_t first=off,last=(int64_t)off+(int64_t)(h-1)*scan,lo=first<last?first:last,hi=(first>last?first:last)+w-1;if(lo<0||hi<0||(uint64_t)hi>=arr->len)return throw_exception(v,"java/lang/ArrayIndexOutOfBoundsException",NULL);int dx=x+v->tx,dy=y+v->ty;for(int yy=0;yy<h;yy++){int run=0;uint32_t lastc=0;int64_t base=(int64_t)off+(int64_t)yy*scan;for(int xx=0;xx<=w;xx++){int opaque=0;uint32_t c=0;if(xx<w){uint16_t p=(uint16_t)array_get(arr,(uint32_t)(base+xx));if(format==4444){unsigned an=(p>>12)&15,r=(p>>8)&15,g=(p>>4)&15,b8=p&15;opaque=!transparent||an>=8;c=(r*17u)<<16|(g*17u)<<8|b8*17u;}else if(format==565){opaque=1;c=expand565(p);}else if(format==555){unsigned r=(p>>10)&31,g=(p>>5)&31,b8=p&31;opaque=1;c=(r*255u/31)<<16|(g*255u/31)<<8|b8*255u/31;}else if(format==444){unsigned r=(p>>8)&15,g=(p>>4)&15,b8=p&15;opaque=1;c=(r*17u)<<16|(g*17u)<<8|b8*17u;}else if(format==1555){unsigned r=(p>>10)&31,g=(p>>5)&31,b8=p&31;opaque=!transparent||(p&0x8000);c=(r*255u/31)<<16|(g*255u/31)<<8|b8*255u/31;}else return throw_exception(v,"java/lang/IllegalArgumentException","DirectGraphics pixel format unsupported");}if(run&&(!opaque||c!=lastc)){gfx_rect(v,o->data[0],dx+xx-run,dy+yy,run,1,lastc);run=0;}if(opaque){lastc=c;run++;}}}return 1;}
