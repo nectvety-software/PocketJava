@@ -95,6 +95,9 @@ Sau khi mở được JAR, VXPEmu dừng ở `Unsupported API` của `java/io/Da
 thiếu hiện đủ thay vì bị cắt ở 31 ký tự. Host test, mock ARM và bản ký pass;
 heap sau quit = 0.
 
+Cherry-pick từ nano_j2me: Graphics.drawArc/fillArc/drawOval/fillOval và
+setClip/clipRect/getClipX/Y/Width/Height (chưa có pointer events và drawImage region).
+
 ARENA.jar nay chạy được qua màn hình `LỜI NÓI ĐẦU` và splash `LIÊN QUÂN MOBILE`
 trên VXPEmu, tới menu đăng nhập khi chạy host. Ba lỗi lõi đã sửa: hằng
 `static final String` qua `ConstantValue` (tag 8) bị từ chối, thiếu

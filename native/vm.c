@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
+#include <math.h>
 #include "miniz_tinfl.h"
 #define CLASSES 160
 #define FRAMES 48
@@ -310,6 +311,13 @@ static int native(PJ*v,int b,const char*name,const char*desc,int32_t*a,int32_t*o
             else {gfx_rect(v,a[0],(int)x,(int)y,(int)(right-x),1,v->color);gfx_rect(v,a[0],(int)x,(int)bottom-1,(int)(right-x),1,v->color);gfx_rect(v,a[0],(int)x,(int)y,1,(int)(bottom-y),v->color);gfx_rect(v,a[0],(int)right-1,(int)y,1,(int)(bottom-y),v->color);}return 1;
         }
         if(IS("drawLine","(IIII)V")){int x0=a[1]+v->tx,y0=a[2]+v->ty,x1=a[3]+v->tx,y1=a[4]+v->ty;int dx=x1>x0?x1-x0:x0-x1,sx=x0<x1?1:-1,dy=y1>y0?y0-y1:y1-y0,sy=y0<y1?1:-1,er=dx+dy;for(;;){gfx_rect(v,a[0],x0,y0,1,1,v->color);if(x0==x1&&y0==y1)break;int e2=er<<1;if(e2>=dy){er+=dy;x0+=sx;}if(e2<=dx){er+=dx;y0+=sy;}}return 1;}
+        if(IS("drawArc","(IIIIII)V")||IS("fillArc","(IIIIII)V")||IS("drawOval","(IIII)V")||IS("fillOval","(IIII)V")){int x,y,w,h,start,extent;if(IS("drawOval","(IIII)V")||IS("fillOval","(IIII)V")){x=a[1];y=a[2];w=a[3];h=a[4];start=0;extent=360;}else{x=a[1];y=a[2];w=a[3];h=a[4];start=a[5];extent=a[6];}if(w<=0||h<=0)return 1;int tx=v->tx,ty=v->ty;int X=x+tx,Y=y+ty;double cx=X+(double)w/2.0,cy=Y+(double)h/2.0,rx=w/2.0,ry=h/2.0;int fill=IS("fillArc","(IIIIII)V")||IS("fillOval","(IIII)V");if(fill){for(int yy=Y;yy<Y+h;yy++)for(int xx=X;xx<X+w;xx++){double nx=(xx+0.5-cx)/rx,ny=(yy+0.5-cy)/ry;if(nx*nx+ny*ny>1.0)continue;double ang=atan2(yy+0.5-cy,xx+0.5-cx)*180.0/3.14159265358979323846;if(ang<0)ang+=360.0;int inarc=0;if(extent>=360||extent<=-360)inarc=1;else{int a1=start,a2=start+extent;if(extent<0){a1=start+extent;a2=start;}double lo=a1%360;if(lo<0)lo+=360;double hi=a2%360;if(hi<0)hi+=360;if(extent>=0){if(lo<=hi)inarc=ang>=lo&&ang<=hi;else inarc=ang>=lo||ang<=hi;}else{if(lo<=hi)inarc=ang>=lo&&ang<=hi;else inarc=ang>=lo||ang<=hi;}}if(inarc)gfx_rect(v,a[0],xx,yy,1,1,v->color);}}else{int total=extent>=0?extent:-extent;if(total>360)total=360;if(total<1)total=1;int nsteps=total*4;if(nsteps<36)nsteps=36;if(nsteps>720)nsteps=720;int prevx=0,prevy=0,first=1;for(int i=0;i<=nsteps;i++){double ang=(start+(extent>=0?1:-1)*(double)i*total/nsteps)*3.14159265358979323846/180.0;int px=(int)lround(cx+rx*cos(ang));int py=(int)lround(cy+ry*sin(ang));if(!first){int x0=prevx,y0=prevy,x1=px,y1=py;int dx=x1>x0?x1-x0:x0-x1,sx=x0<x1?1:-1,dy=y1>y0?y0-y1:y1-y0,sy=y0<y1?1:-1,er=dx+dy;for(;;){gfx_rect(v,a[0],x0,y0,1,1,v->color);if(x0==x1&&y0==y1)break;int e2=er<<1;if(e2>=dy){er+=dy;x0+=sx;}if(e2<=dx){er+=dx;y0+=sy;}}}prevx=px;prevy=py;first=0;}}return 1;}
+        if(IS("setClip","(IIII)V")){v->cx=a[1]+v->tx;v->cy=a[2]+v->ty;v->cw=a[3];v->ch=a[4];if(v->cw<0)v->cw=0;if(v->ch<0)v->ch=0;return 1;}
+        if(IS("clipRect","(IIII)V")){int nx=a[1]+v->tx,ny=a[2]+v->ty,nw=a[3],nh=a[4];if(nx>v->cx)v->cx=nx;if(ny>v->cy)v->cy=ny;if(nx+nw<v->cx+v->cw)v->cw=nx+nw-v->cx;if(ny+nh<v->cy+v->ch)v->ch=ny+nh-v->cy;if(v->cw<0)v->cw=0;if(v->ch<0)v->ch=0;return 1;}
+        if(IS("getClipX","()I")){*out=v->cx-v->tx;return 1;}
+        if(IS("getClipY","()I")){*out=v->cy-v->ty;return 1;}
+        if(IS("getClipWidth","()I")){*out=v->cw;return 1;}
+        if(IS("getClipHeight","()I")){*out=v->ch;return 1;}
         if(IS("drawString","(Ljava/lang/String;III)V")){
             const char*s=str(v,a[1]);int64_t x=(int64_t)a[2]+v->tx,y=(int64_t)a[3]+v->ty;unsigned anchor=(unsigned)a[4];size_t width=utf_length(s)*8;
             if(anchor&8)x-=(int64_t)width;else if(anchor&1)x-=(int64_t)width/2;if(anchor&32)y-=16;else if(anchor&64)y-=12;
