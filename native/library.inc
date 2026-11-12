@@ -46,6 +46,7 @@ static int library_native(PJ*v,int b,const char*name,const char*desc,int32_t*a,i
         o=obj(v,a[0]);if(!o)return -1;
         Object*rso=o->data[0]?obj(v,o->data[0]):NULL;
         if(IS("hasMoreElements","()Z")||IS("hasNextElement","()Z")){*out=(rso&&(int)rso->data[1]>(int)o->data[1])?1:0;return 1;}
+        if(IS("hasPreviousElement","()Z")){*out=((int)o->data[1]>0)?1:0;return 1;}
         if(IS("nextElement","()[B")){if(!rso||(int)o->data[1]>=(int)rso->data[1])return throw_exception(v,"java/util/NoSuchElementException",NULL);o->data[1]++;int id=o->data[1];size_t n;unsigned char*d=platform_record_read((uint32_t)rso->data[0],id,&n);if(!d)return throw_exception(v,"javax/microedition/rms/InvalidRecordIDException",NULL);*out=allocobj(v,0,18,(uint32_t)n);if(*out)memcpy(obj(v,*out)->data,d,n);pj_free(d);return *out?1:-1;}
         if(IS("numRecords","()I")){*out=rso?rso->data[1]:0;return 1;}
         if(IS("nextRecordId","()I")){if(!rso||(int)o->data[1]>=(int)rso->data[1])return throw_exception(v,"java/util/NoSuchElementException",NULL);o->data[1]++;*out=o->data[1];return 1;}
