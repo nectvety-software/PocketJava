@@ -4,7 +4,7 @@
 #include <stddef.h>
 #define PJ_ERROR_CAP 160u
 #ifdef MRE
-#define PJ_MEMORY_LIMIT (896u*1024u)
+#define PJ_MEMORY_LIMIT (1792u*1024u)
 #else
 #define PJ_MEMORY_LIMIT (896u*1024u)
 #endif
