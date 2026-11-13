@@ -295,6 +295,7 @@ static int native(PJ*v,int b,const char*name,const char*desc,int32_t*a,int32_t*o
     if((b==B_CANVAS||b==B_GAMECANVAS)&&IS("isDoubleBuffered","()Z")){*out=0;return 1;}
     if((b==B_CANVAS||b==B_GAMECANVAS)&&IS("getGameAction","(I)I")){switch(a[1]){case -1:case 50:*out=1;break;case -2:case 56:*out=6;break;case -3:case 52:*out=2;break;case -4:case 54:*out=5;break;case -5:case 53:*out=8;break;}return 1;}
     if((b==B_CANVAS||b==B_GAMECANVAS)&&(IS("hasPointerEvents","()Z")||IS("hasPointerMotionEvents","()Z")||IS("hasRepeatEvents","()Z"))){*out=0;return 1;}
+    if((b==B_CANVAS||b==B_GAMECANVAS||b==B_DISPLAYABLE)&&(IS("addCommand","(Ljavax/microedition/lcdui/Command;)V")||IS("removeCommand","(Ljavax/microedition/lcdui/Command;)V")||IS("setCommandListener","(Ljavax/microedition/lcdui/CommandListener;)V"))){return 1;}
     if((b==B_CANVAS||b==B_GAMECANVAS)&&IS("isPointerPressed","(I)Z")){*out=0;return 1;}
     if((b==B_CANVAS||b==B_GAMECANVAS)&&(IS("getPointerX","(I)I")||IS("getPointerY","(I)I"))){*out=0;return 1;}
     if((b==B_CANVAS||b==B_GAMECANVAS||b==B_DISPLAYABLE)&&IS("getKeyName","(I)Ljava/lang/String;")){
