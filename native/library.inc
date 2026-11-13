@@ -237,7 +237,7 @@ static int library_native(PJ*v,int b,const char*name,const char*desc,int32_t*a,i
         int is_open_input = !strcmp(name,"openInputStream")||!strcmp(name,"openDataInputStream")||!strcmp(name,"open");
         int is_open_output = !strcmp(name,"openOutputStream")||!strcmp(name,"openDataOutputStream");
         if(is_open_input){
-            const char*url=a[0]?str(v,a[0]):"";const char*path=url;
+            const char*url=a[0]?str(v,a[0]):"";if(strstr(url,"http:")||strstr(url,"https:")||strstr(url,"socket:"))return throw_exception(v,"java/io/IOException","Unsupported connection scheme");const char*path=url;
             /* strip scheme */
             const char*sep=strstr(path,"://");if(sep)path=sep+3;
             if(*path=='/')path++;
